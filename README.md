@@ -15,6 +15,10 @@ The app exposes two endpoints:
 
 Docker images are published to [Docker Hub](https://hub.docker.com/r/opsani/fiber-http).
 
+```console
+$ docker pull opsani/fiber-http:latest
+```
+
 Tasks for working with the container image are in the
 [Makefile](Makefile).
 
