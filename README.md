@@ -1,8 +1,7 @@
 # fiber-http
 
 A minimalist Golang web application for testing Opsani
-optimizations with minimal dependencies, high throughput,
-and predictable performance.
+optimizations with high throughput, predictable performance, and metrics instrumentation.
 
 Built with [Fiber](https://docs.gofiber.io/) and [FastHTTP](https://github.com/valyala/fasthttp).
 
@@ -38,6 +37,15 @@ $ docker pull opsani/fiber-http:latest
 
 Tasks for working with the container image are in the
 [Makefile](Makefile).
+
+## GOMAXPROCS
+
+This application utilizes [automaxprocs](https://github.com/uber-go/automaxprocs) to correctly
+align the value of `GOMAXPROCS` when running in a container.
+
+By default, `GOMAXPROCS` will align with the host core count rather than the CPU resources 
+actually available to the container via the cgroups CPU quota. This misalignment will lead to 
+resource exhaustion and make optimization impossible.
 
 ## License
 
