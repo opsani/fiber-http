@@ -17,6 +17,17 @@ The app exposes several endpoints:
 The resource endpoints of `cpu`, `memory`, and `time` are useful for triggering the artificial consumption
 of resources for testing autoscale behaviors, error handling, response to latency, etc.
 
+## Instrumentation
+
+The application includes support for instrumentation with metrics systems for testing optization
+with different measurement backends.
+
+A [Prometheus](https://prometheus.io/) metrics endpoint is exposed at `/metrics` that can be scraped.
+
+[New Relic](https://newrelic.com/) instrumentation can be activated by setting the `NEW_ RELIC_LICENSE_KEY` environment
+variable to a valid New Relic license key. The middleware will activate and log a status
+message after initialization.
+
 ## Docker images
 
 Docker images are published to [Docker Hub](https://hub.docker.com/r/opsani/fiber-http).

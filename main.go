@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
 	"runtime"
 	"time"
 
@@ -10,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/middleware"
 	"github.com/inhies/go-bytesize"
 
+	"github.com/newrelic/go-agent/v3/newrelic"
 	_ "go.uber.org/automaxprocs"
 )
 
@@ -21,6 +26,20 @@ func main() {
 	prometheus := fiberprometheus.New("fiber-http")
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
+
+	// activate New Relic if NEW_RELIC_LICENSE_KEY is in the environment
+	if newrelicLicenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY"); newrelicLicenseKey != "" {
+		newrelicApp, err := newrelic.NewApplication(
+			newrelic.ConfigAppName("fiber-http"),
+			newrelic.ConfigLicense(newrelicLicenseKey),
+		)
+		if err == nil {
+			app.Use(NewRelicMiddleware(newrelicApp))
+			log.Println("New Relic middleware initialized")
+		} else {
+			log.Printf("WARNING: failed to initialize New Relic: %s\n", err)
+		}
+	}
 
 	app.Get("/", func(c *fiber.Ctx) {
 		c.Send("move along, nothing to see here")
@@ -60,6 +79,38 @@ func main() {
 	})
 
 	app.Listen(8080)
+}
+
+// NewRelicMiddleware instruments the request with New Relic
+func NewRelicMiddleware(app *newrelic.Application) fiber.Handler {
+	return func(c *fiber.Ctx) {
+		// start an HTTP transaction with New Relic
+		txn := app.StartTransaction(c.Path())
+		defer txn.End()
+
+		// let Fiber process the request
+		c.Next()
+
+		// translate the FastHTTP request & response for New Relic
+		hdr := make(http.Header)
+		c.Fasthttp.Request.Header.VisitAll(func(k, v []byte) {
+			sk := string(k)
+			sv := string(v)
+			hdr.Set(sk, sv)
+		})
+
+		txn.SetWebRequest(newrelic.WebRequest{
+			Header:    http.Header{},
+			URL:       &url.URL{Path: c.Path()},
+			Method:    c.Method(),
+			Transport: newrelic.TransportHTTP,
+		})
+
+		// Get a New Relic wrapper for the response writer
+		rw := txn.SetWebResponse(nil)
+		rw.WriteHeader(c.Fasthttp.Response.StatusCode())
+		rw.Write(c.Fasthttp.Response.Body())
+	}
 }
 
 func consumeCPU(duration time.Duration) {
