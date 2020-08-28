@@ -8,6 +8,8 @@ require (
 	github.com/gorilla/schema v1.2.0 // indirect
 	github.com/inhies/go-bytesize v0.0.0-20200716184324-4fe85e9b81b2
 	github.com/klauspost/compress v1.10.11 // indirect
+	github.com/newrelic/go-agent v3.8.1+incompatible // indirect
+	github.com/newrelic/go-agent/v3 v3.8.1
 	github.com/prometheus/common v0.13.0 // indirect
 	go.uber.org/automaxprocs v1.3.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
