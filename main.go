@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/ansrivas/fiberprometheus"
@@ -15,7 +15,6 @@ import (
 	"github.com/inhies/go-bytesize"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
-	_ "go.uber.org/automaxprocs"
 )
 
 func main() {
@@ -52,7 +51,12 @@ func main() {
 			return
 		}
 
-		consumeCPU(duration)
+		x := 0.0001
+		start := time.Now()
+		for time.Since(start) < duration {
+			x += math.Sqrt(x)
+		}
+
 		c.Send(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
 	})
 
@@ -110,28 +114,5 @@ func NewRelicMiddleware(app *newrelic.Application) fiber.Handler {
 		rw := txn.SetWebResponse(nil)
 		rw.WriteHeader(c.Fasthttp.Response.StatusCode())
 		rw.Write(c.Fasthttp.Response.Body())
-	}
-}
-
-func consumeCPU(duration time.Duration) {
-	maxProcs := runtime.GOMAXPROCS(0)
-	stop := make(chan bool)
-
-	for i := 0; i < maxProcs; i++ {
-		go func() {
-			for {
-				select {
-				case <-stop:
-					return
-				default:
-				}
-			}
-		}()
-	}
-
-	time.Sleep(duration)
-
-	for i := 0; i < maxProcs; i++ {
-		stop <- true
 	}
 }
