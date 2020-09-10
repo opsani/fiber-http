@@ -10,7 +10,7 @@ The app exposes several endpoints:
 
 * `/` - Returns a 200 (Ok) `text/plain` respomse.
 * `/metrics` - Metrics in Prometheus format for scraping.
-* `call{?url}` - Have fiber-http to call out to another URL.
+* `/call{?url}` - Have fiber-http to call out to another URL.
 * `/cpu{?duration}` - Consume CPU resources for the given duration (in Golang
   Duration string format). Default: `100ms`
 * `/memory{?size}` - Consume memory resources by allocating a byte array of the
