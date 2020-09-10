@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/ansrivas/fiberprometheus"
@@ -47,6 +48,19 @@ func main() {
 	app.Get("/", func(c *fiber.Ctx) {
 		c.Send("move along, nothing to see here")
 	})
+
+  app.Get("/call", func(c *fiber.Ctx) {
+		remoteURL := c.Query("url")
+		if remoteURL == "" {
+			c.Send("no url read, nothing to see here")
+			return
+		}
+		out, err := exec.Command("curl", remoteURL).Output()
+    if err != nil {
+			c.Send(err)
+		}
+		c.Send(out)
+  })
 
 	app.Get("/cpu", func(c *fiber.Ctx) {
 		duration, err := time.ParseDuration(c.Query("duration", "100ms"))
