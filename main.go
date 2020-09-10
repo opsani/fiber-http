@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/ansrivas/fiberprometheus"
@@ -26,6 +27,17 @@ func main() {
 	prometheus := fiberprometheus.New("fiber-http")
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
+
+  listenPort := 8080
+	listenPortInput := os.Getenv("FIBER_HTTP_LISTEN_PORT")
+	if listenPortInput != "" {
+		lp, err := strconv.Atoi(listenPortInput)
+		if err != nil {
+			log.Printf("ERROR setting FIBER_HTTP_LISTEN_PORT: %s\n", err)
+		} else {
+			listenPort = lp
+		}
+	}
 
   newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
 	if newrelicAppName == "" {
@@ -100,7 +112,7 @@ func main() {
 		c.Send(fmt.Sprintf("slept for %v\n", duration.String()))
 	})
 
-	app.Listen(8080)
+	app.Listen(listenPort)
 }
 
 // NewRelicMiddleware instruments the request with New Relic

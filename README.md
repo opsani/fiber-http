@@ -6,7 +6,12 @@ throughput, predictable performance, and metrics instrumentation.
 Built with [Fiber](https://docs.gofiber.io/) and
 [FastHTTP](https://github.com/valyala/fasthttp).
 
-The app exposes several endpoints:
+## Listening port
+Set environment variable FIBER_HTTP_LISTEN_PORT to the desired TCP listening port.
+
+The default listening port is 8080.
+
+## Exposed endpoints
 
 * `/` - Returns a 200 (Ok) `text/plain` respomse.
 * `/metrics` - Metrics in Prometheus format for scraping.
