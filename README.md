@@ -30,8 +30,10 @@ A [Prometheus](https://prometheus.io/) metrics endpoint is exposed at `/metrics`
 that can be scraped.
 
 [New Relic](https://newrelic.com/) instrumentation can be activated by setting
-the `NEW_ RELIC_LICENSE_KEY` environment variable to a valid New Relic license
+the `NEW_RELIC_LICENSE_KEY` environment variable to a valid New Relic license
 key. The middleware will activate and log a status message after initialization.
+
+Set `NEW_RELIC_APP_NAME` to define the corresponding New Relic APM identifier (default: `fiber-http`).
 
 ## Docker images
 
