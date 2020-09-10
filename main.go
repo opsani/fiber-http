@@ -26,10 +26,14 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
+  newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
+	if newrelicAppName == "" {
+		newrelicAppName = "fiber-http"
+	}
 	// activate New Relic if NEW_RELIC_LICENSE_KEY is in the environment
 	if newrelicLicenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY"); newrelicLicenseKey != "" {
 		newrelicApp, err := newrelic.NewApplication(
-			newrelic.ConfigAppName("fiber-http"),
+			newrelic.ConfigAppName(newrelicAppName),
 			newrelic.ConfigLicense(newrelicLicenseKey),
 		)
 		if err == nil {
