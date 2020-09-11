@@ -6,9 +6,9 @@ throughput, predictable performance, and metrics instrumentation.
 Built with [Fiber](https://docs.gofiber.io/) and
 [FastHTTP](https://github.com/valyala/fasthttp).
 
-The app exposes several endpoints:
+## Exposed endpoints
 
-* `/` - Returns a 200 (Ok) `text/plain` respomse.
+* `/` - Returns a 200 (Ok) `text/plain` response of "move along, nothing to see here".
 * `/metrics` - Metrics in Prometheus format for scraping.
 * `/cpu{?duration}` - Consume CPU resources for the given duration (in Golang
   Duration string format). Default: `100ms`
@@ -16,10 +16,16 @@ The app exposes several endpoints:
   given size (in human readable byte string format). Default: `10MB`
 * `/time{?duration}` - Consume time by sleeping for the given duration (in
   Golang Duration string format). Default: `100ms`
+* `/request{?url}` - Proxy an HTTP GET request to a URL and return the status code & message body retrieved..
 
 The resource endpoints of `cpu`, `memory`, and `time` are useful for triggering
 the artificial consumption of resources for testing autoscale behaviors, error
 handling, response to latency, etc.
+
+The `request` endpoint enables testing of service dependencies and can be reentrantly
+chained. For example, when running an instance locally on port 8080 a request made
+to `http://localhost:8080/request?url=http://localhost:8080/time?duration=45ms` would
+simulate an upstream service with a 45ms latency.
 
 ## Instrumentation
 
@@ -30,8 +36,15 @@ A [Prometheus](https://prometheus.io/) metrics endpoint is exposed at `/metrics`
 that can be scraped.
 
 [New Relic](https://newrelic.com/) instrumentation can be activated by setting
-the `NEW_ RELIC_LICENSE_KEY` environment variable to a valid New Relic license
+the `NEW_RELIC_LICENSE_KEY` environment variable to a valid New Relic license
 key. The middleware will activate and log a status message after initialization.
+
+Set `NEW_RELIC_APP_NAME` to define the corresponding New Relic APM identifier (default: `fiber-http`).
+
+## Listening port
+
+By default, the server listens on port 8080. The port can be changed via the `PORT`
+environment variable.
 
 ## Docker images
 

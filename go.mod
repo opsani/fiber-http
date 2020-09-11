@@ -11,10 +11,12 @@ require (
 	github.com/newrelic/go-agent v3.8.1+incompatible // indirect
 	github.com/newrelic/go-agent/v3 v3.8.1
 	github.com/prometheus/common v0.13.0 // indirect
+	github.com/valyala/fasthttp v1.16.0
 	go.uber.org/automaxprocs v1.3.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	golang.org/x/tools v0.0.0-20200828013309-97019fc2e64b // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gopkg.in/valyala/fasthttp.v20160316 v20160316.0.0-20160315092703-2b172da53920 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
 )
