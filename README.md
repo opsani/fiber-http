@@ -24,8 +24,11 @@ The default listening port is 8080.
   Golang Duration string format). Default: `100ms`
 
 ## Remote example call to fiber-http server
-```% curl "http://localhost:8080/call?url=http://localhost:8000/cpu?duration=250ms"
-consumed CPU for 250ms```
+
+```
+% curl "http://localhost:8080/call?url=http://localhost:8000/cpu?duration=250ms"
+consumed CPU for 250ms
+```
 
 The resource endpoints of `cpu`, `memory`, and `time` are useful for triggering
 the artificial consumption of resources for testing autoscale behaviors, error
