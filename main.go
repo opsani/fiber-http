@@ -28,7 +28,7 @@ func main() {
 	prometheus.RegisterAt(app, "/metrics")
 	app.Use(prometheus.Middleware)
 
-  listenPort := 8080
+        listenPort := 8080
 	listenPortInput := os.Getenv("FIBER_HTTP_LISTEN_PORT")
 	if listenPortInput != "" {
 		lp, err := strconv.Atoi(listenPortInput)
