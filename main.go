@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
+	"github.com/valyala/fasthttp"
 
 	"github.com/ansrivas/fiberprometheus"
 	"github.com/gofiber/fiber"
@@ -67,12 +67,15 @@ func main() {
 			c.Send("no url read, nothing to see here")
 			return
 		}
-		out, err := exec.Command("curl", remoteURL).Output()
-    if err != nil {
-			c.Send(err)
-		}
-		c.Send(out)
-  })
+		req := fasthttp.AcquireRequest()
+    resp := fasthttp.AcquireResponse()
+    defer fasthttp.ReleaseRequest(req)
+    defer fasthttp.ReleaseResponse(resp)
+		req.SetRequestURI(remoteURL)
+		fasthttp.Do(req, resp)
+    bodyBytes := resp.Body()
+    c.Send(string(bodyBytes))
+	})
 
 	app.Get("/cpu", func(c *fiber.Ctx) {
 		duration, err := time.ParseDuration(c.Query("duration", "100ms"))

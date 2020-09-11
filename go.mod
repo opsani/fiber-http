@@ -16,5 +16,6 @@ require (
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	golang.org/x/tools v0.0.0-20200828013309-97019fc2e64b // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gopkg.in/valyala/fasthttp.v20160316 v20160316.0.0-20160315092703-2b172da53920 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
 )
