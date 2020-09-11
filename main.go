@@ -39,7 +39,7 @@ func main() {
 		}
 	}
 
-  newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
+        newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
 	if newrelicAppName == "" {
 		newrelicAppName = "fiber-http"
 	}
@@ -61,20 +61,20 @@ func main() {
 		c.Send("move along, nothing to see here")
 	})
 
-  app.Get("/call", func(c *fiber.Ctx) {
+        app.Get("/call", func(c *fiber.Ctx) {
 		remoteURL := c.Query("url")
 		if remoteURL == "" {
 			c.Send("no url read, nothing to see here")
 			return
 		}
 		req := fasthttp.AcquireRequest()
-    resp := fasthttp.AcquireResponse()
-    defer fasthttp.ReleaseRequest(req)
-    defer fasthttp.ReleaseResponse(resp)
+                resp := fasthttp.AcquireResponse()
+                defer fasthttp.ReleaseRequest(req)
+                defer fasthttp.ReleaseResponse(resp)
 		req.SetRequestURI(remoteURL)
 		fasthttp.Do(req, resp)
-    bodyBytes := resp.Body()
-    c.Send(string(bodyBytes))
+                bodyBytes := resp.Body()
+                c.Send(string(bodyBytes))
 	})
 
 	app.Get("/cpu", func(c *fiber.Ctx) {
