@@ -80,7 +80,7 @@ func TestTime(t *testing.T) {
 
 func TestRequest(t *testing.T) {
 	app := newApp()
-	req := httptest.NewRequest("GET", "http://localhost:8080/request?url=http://opsani.com/", nil)
+	req := httptest.NewRequest("GET", "http://localhost:8080/request?url=http://localhost:8080/", nil)
 
 	resp, err := app.Test(req)
 	if err != nil {
