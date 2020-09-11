@@ -11,6 +11,7 @@ require (
 	github.com/newrelic/go-agent v3.8.1+incompatible // indirect
 	github.com/newrelic/go-agent/v3 v3.8.1
 	github.com/prometheus/common v0.13.0 // indirect
+	github.com/valyala/fasthttp v1.16.0
 	go.uber.org/automaxprocs v1.3.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect

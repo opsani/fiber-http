@@ -1,3 +1,17 @@
+// Copyright 2020 Opsani
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -7,115 +21,120 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+	"sync"
 	"time"
-	"github.com/valyala/fasthttp"
 
 	"github.com/ansrivas/fiberprometheus"
 	"github.com/gofiber/fiber"
 	"github.com/gofiber/fiber/middleware"
 	"github.com/inhies/go-bytesize"
+	"github.com/valyala/fasthttp"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
+var once sync.Once
+var app *fiber.App
+
+func newApp() *fiber.App {
+	once.Do(func() {
+		app = fiber.New()
+		app.Use(middleware.Logger())
+		app.Use(middleware.RequestID())
+
+		prometheus := fiberprometheus.New("fiber-http")
+		prometheus.RegisterAt(app, "/metrics")
+		app.Use(prometheus.Middleware)
+
+		// activate New Relic if NEW_RELIC_LICENSE_KEY is in the environment
+		if newrelicLicenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY"); newrelicLicenseKey != "" {
+			newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
+			if newrelicAppName == "" {
+				newrelicAppName = "fiber-http"
+			}
+			newrelicApp, err := newrelic.NewApplication(
+				newrelic.ConfigAppName(newrelicAppName),
+				newrelic.ConfigLicense(newrelicLicenseKey),
+			)
+			if err == nil {
+				app.Use(NewRelicMiddleware(newrelicApp))
+				log.Println("New Relic middleware initialized")
+			} else {
+				log.Printf("WARNING: failed to initialize New Relic: %s\n", err)
+			}
+		}
+
+		app.Get("/", func(c *fiber.Ctx) {
+			c.Send("move along, nothing to see here")
+		})
+
+		app.Get("/cpu", func(c *fiber.Ctx) {
+			duration, err := time.ParseDuration(c.Query("duration", "100ms"))
+			if err != nil {
+				c.Next(err)
+				return
+			}
+
+			x := 0.0001
+			start := time.Now()
+			for time.Since(start) < duration {
+				x += math.Sqrt(x)
+			}
+
+			c.Send(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
+		})
+
+		app.Get("/memory", func(c *fiber.Ctx) {
+			size, err := bytesize.Parse(c.Query("size", "10MB"))
+			if err != nil {
+				c.Next(err)
+				return
+			}
+
+			data := make([]byte, size)
+			c.Send(fmt.Sprintf("allocated %v (%d bytes) of memory\n", size.String(), len(data)))
+		})
+
+		app.Get("/time", func(c *fiber.Ctx) {
+			duration, err := time.ParseDuration(c.Query("duration", "100ms"))
+			if err != nil {
+				c.Next(err)
+				return
+			}
+
+			time.Sleep(duration)
+			c.Send(fmt.Sprintf("slept for %v\n", duration.String()))
+		})
+
+		app.Get("/request", func(c *fiber.Ctx) {
+			remoteURL := c.Query("url")
+			if remoteURL == "" {
+				c.Status(400)
+				c.Send("error: missing required query parameter \"url\"")
+				return
+			}
+
+			client := fasthttp.Client{}
+			statusCode, body, err := client.Get(nil, remoteURL)
+			c.Status(statusCode)
+			if err != nil {
+				c.Send(err)
+			} else {
+				c.Send(string(body))
+			}
+		})
+	})
+
+	return app
+}
+
 func main() {
-	app := fiber.New()
-	app.Use(middleware.Logger())
-	app.Use(middleware.RequestID())
-
-	prometheus := fiberprometheus.New("fiber-http")
-	prometheus.RegisterAt(app, "/metrics")
-	app.Use(prometheus.Middleware)
-
-        listenPort := 8080
-	listenPortInput := os.Getenv("FIBER_HTTP_LISTEN_PORT")
-	if listenPortInput != "" {
-		lp, err := strconv.Atoi(listenPortInput)
-		if err != nil {
-			log.Printf("ERROR setting FIBER_HTTP_LISTEN_PORT: %s\n", err)
-		} else {
-			listenPort = lp
-		}
+	port := "8080"
+	if p := os.Getenv("PORT"); p != "" {
+		port = p
 	}
-
-        newrelicAppName := os.Getenv("NEW_RELIC_APP_NAME")
-	if newrelicAppName == "" {
-		newrelicAppName = "fiber-http"
-	}
-	// activate New Relic if NEW_RELIC_LICENSE_KEY is in the environment
-	if newrelicLicenseKey := os.Getenv("NEW_RELIC_LICENSE_KEY"); newrelicLicenseKey != "" {
-		newrelicApp, err := newrelic.NewApplication(
-			newrelic.ConfigAppName(newrelicAppName),
-			newrelic.ConfigLicense(newrelicLicenseKey),
-		)
-		if err == nil {
-			app.Use(NewRelicMiddleware(newrelicApp))
-			log.Println("New Relic middleware initialized")
-		} else {
-			log.Printf("WARNING: failed to initialize New Relic: %s\n", err)
-		}
-	}
-
-	app.Get("/", func(c *fiber.Ctx) {
-		c.Send("move along, nothing to see here")
-	})
-
-        app.Get("/call", func(c *fiber.Ctx) {
-		remoteURL := c.Query("url")
-		if remoteURL == "" {
-			c.Send("no url read, nothing to see here")
-			return
-		}
-		req := fasthttp.AcquireRequest()
-                resp := fasthttp.AcquireResponse()
-                defer fasthttp.ReleaseRequest(req)
-                defer fasthttp.ReleaseResponse(resp)
-		req.SetRequestURI(remoteURL)
-		fasthttp.Do(req, resp)
-                bodyBytes := resp.Body()
-                c.Send(string(bodyBytes))
-	})
-
-	app.Get("/cpu", func(c *fiber.Ctx) {
-		duration, err := time.ParseDuration(c.Query("duration", "100ms"))
-		if err != nil {
-			c.Next(err)
-			return
-		}
-
-		x := 0.0001
-		start := time.Now()
-		for time.Since(start) < duration {
-			x += math.Sqrt(x)
-		}
-
-		c.Send(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
-	})
-
-	app.Get("/memory", func(c *fiber.Ctx) {
-		size, err := bytesize.Parse(c.Query("size", "10MB"))
-		if err != nil {
-			c.Next(err)
-			return
-		}
-
-		data := make([]byte, size)
-		c.Send(fmt.Sprintf("allocated %v (%d bytes) of memory\n", size.String(), len(data)))
-	})
-
-	app.Get("/time", func(c *fiber.Ctx) {
-		duration, err := time.ParseDuration(c.Query("duration", "100ms"))
-		if err != nil {
-			c.Next(err)
-			return
-		}
-
-		time.Sleep(duration)
-		c.Send(fmt.Sprintf("slept for %v\n", duration.String()))
-	})
-
-	app.Listen(listenPort)
+	app := newApp()
+	app.Listen(port)
 }
 
 // NewRelicMiddleware instruments the request with New Relic
