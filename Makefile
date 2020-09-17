@@ -7,7 +7,7 @@ build:
 .PHONY: run
 run: build
 	@mkdir -p ./build
-	docker run -it -v $(IMAGE_NAME)
+	docker run -it --rm $(IMAGE_NAME)
 
 .PHONY: push
 push: build
