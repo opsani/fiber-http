@@ -23,8 +23,8 @@ the artificial consumption of resources for testing autoscale behaviors, error
 handling, response to latency, etc.
 
 The `request` endpoint enables testing of service dependencies and can be reentrantly
-chained. For example, when running an instance locally on port 8080 a request made
-to `http://localhost:8080/request?url=http://localhost:8080/time?duration=45ms` would
+chained. For example, when running an instance locally on port 8480 a request made
+to `http://localhost:8480/request?url=http://localhost:8480/time?duration=45ms` would
 simulate an upstream service with a 45ms latency.
 
 ## Instrumentation
@@ -41,10 +41,13 @@ key. The middleware will activate and log a status message after initialization.
 
 Set `NEW_RELIC_APP_NAME` to define the corresponding New Relic APM identifier (default: `fiber-http`).
 
-## Listening port
+## Listening ports
 
-By default, the server listens on port 8080. The port can be changed via the `PORT`
-environment variable.
+By default, the server listens on HTTP port 8480 and HTTPS port 8843 (N + 8400). The port can be changed via the `HTTP_PORT` and `HTTPS_PORT` environment variables, respectively.
+
+## Initial memory allocation
+
+An initial resident memory allocation be created by setting the `INIT_MEMORY_SIZE` environment variable (in human readable byte string format).
 
 ## Docker images
 

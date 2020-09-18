@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"math"
@@ -24,9 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ansrivas/fiberprometheus"
-	"github.com/gofiber/fiber"
-	"github.com/gofiber/fiber/middleware"
+	"github.com/ansrivas/fiberprometheus/v2"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/inhies/go-bytesize"
 	"github.com/valyala/fasthttp"
 
@@ -35,12 +37,13 @@ import (
 
 var once sync.Once
 var app *fiber.App
+var initMemory []byte
 
 func newApp() *fiber.App {
 	once.Do(func() {
 		app = fiber.New()
-		app.Use(middleware.Logger())
-		app.Use(middleware.RequestID())
+		app.Use(logger.New())
+		app.Use(requestid.New())
 
 		prometheus := fiberprometheus.New("fiber-http")
 		prometheus.RegisterAt(app, "/metrics")
@@ -64,15 +67,14 @@ func newApp() *fiber.App {
 			}
 		}
 
-		app.Get("/", func(c *fiber.Ctx) {
-			c.Send("move along, nothing to see here")
+		app.Get("/", func(c *fiber.Ctx) error {
+			return c.SendString("move along, nothing to see here")
 		})
 
-		app.Get("/cpu", func(c *fiber.Ctx) {
+		app.Get("/cpu", func(c *fiber.Ctx) error {
 			duration, err := time.ParseDuration(c.Query("duration", "100ms"))
 			if err != nil {
-				c.Next(err)
-				return
+				return err
 			}
 
 			x := 0.0001
@@ -81,47 +83,47 @@ func newApp() *fiber.App {
 				x += math.Sqrt(x)
 			}
 
-			c.Send(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
+			return c.SendString(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
 		})
 
-		app.Get("/memory", func(c *fiber.Ctx) {
+		app.Get("/memory", func(c *fiber.Ctx) error {
 			size, err := bytesize.Parse(c.Query("size", "10MB"))
 			if err != nil {
-				c.Next(err)
-				return
+				return err
 			}
 
-			data := make([]byte, size)
-			c.Send(fmt.Sprintf("allocated %v (%d bytes) of memory\n", size.String(), len(data)))
+			data := append([]byte{}, make([]byte, size)...)
+			return c.SendString(fmt.Sprintf("allocated %v (%d bytes) of memory\n", size.String(), len(data)))
 		})
 
-		app.Get("/time", func(c *fiber.Ctx) {
+		app.Get("/time", func(c *fiber.Ctx) error {
 			duration, err := time.ParseDuration(c.Query("duration", "100ms"))
 			if err != nil {
-				c.Next(err)
-				return
+				return err
 			}
 
 			time.Sleep(duration)
-			c.Send(fmt.Sprintf("slept for %v\n", duration.String()))
+			return c.SendString(fmt.Sprintf("slept for %v\n", duration.String()))
 		})
 
-		app.Get("/request", func(c *fiber.Ctx) {
+		app.Get("/request", func(c *fiber.Ctx) error {
 			remoteURL := c.Query("url")
 			if remoteURL == "" {
-				c.Status(400)
-				c.Send("error: missing required query parameter \"url\"")
-				return
+				c.Status(fiber.StatusBadRequest)
+				return c.SendString("error: missing required query parameter \"url\"")
 			}
 
 			client := fasthttp.Client{}
 			statusCode, body, err := client.Get(nil, remoteURL)
 			c.Status(statusCode)
 			if err != nil {
-				c.Send(err)
-			} else {
-				c.Send(string(body))
+				return err
 			}
+			return c.Send(body)
+		})
+
+		app.Use(func(c *fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNotFound)
 		})
 	})
 
@@ -129,17 +131,52 @@ func newApp() *fiber.App {
 }
 
 func main() {
-	port := "8080"
-	if p := os.Getenv("PORT"); p != "" {
-		port = p
+	// Allocate an initial heap if requested
+	if sizeEnv := os.Getenv("INIT_MEMORY_SIZE"); sizeEnv != "" {
+		size, err := bytesize.Parse(sizeEnv)
+		if err != nil {
+			log.Fatal(err)
+		}
+		initMemory = append(initMemory, make([]byte, size)...)
+		log.Printf("NOTICE: allocated %v (%d bytes) of memory\n", size.String(), len(initMemory))
+	}
+
+	httpPort := ":8480"
+	if p := os.Getenv("HTTP_PORT"); p != "" {
+		httpPort = p
 	}
 	app := newApp()
-	app.Listen(port)
+
+	// Load TLS assets
+	cer, err := tls.LoadX509KeyPair("certs/dev.opsani.com+3.pem", "certs/dev.opsani.com+3-key.pem")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config := &tls.Config{Certificates: []tls.Certificate{cer}}
+
+	// Create TLS port listener
+	httpsPort := ":8843"
+	if p := os.Getenv("HTTPS_PORT"); p != "" {
+		httpsPort = p
+	}
+	ln, err := tls.Listen("tcp", httpsPort, config)
+	if err != nil {
+		panic(err)
+	}
+
+	// Listen with TLS on HTTPS_PORT (:8843)
+	go func() {
+		log.Fatal(app.Listener(ln))
+	}()
+
+	// Listen on HTTP_PORT (:8480)
+	log.Fatal(app.Listen(httpPort))
 }
 
 // NewRelicMiddleware instruments the request with New Relic
 func NewRelicMiddleware(app *newrelic.Application) fiber.Handler {
-	return func(c *fiber.Ctx) {
+	return func(c *fiber.Ctx) error {
 		// start an HTTP transaction with New Relic
 		txn := app.StartTransaction(c.Path())
 		defer txn.End()
@@ -149,7 +186,7 @@ func NewRelicMiddleware(app *newrelic.Application) fiber.Handler {
 
 		// translate the FastHTTP request & response for New Relic
 		hdr := make(http.Header)
-		c.Fasthttp.Request.Header.VisitAll(func(k, v []byte) {
+		c.Context().Request.Header.VisitAll(func(k, v []byte) {
 			sk := string(k)
 			sv := string(v)
 			hdr.Set(sk, sv)
@@ -164,7 +201,8 @@ func NewRelicMiddleware(app *newrelic.Application) fiber.Handler {
 
 		// Get a New Relic wrapper for the response writer
 		rw := txn.SetWebResponse(nil)
-		rw.WriteHeader(c.Fasthttp.Response.StatusCode())
-		rw.Write(c.Fasthttp.Response.Body())
+		rw.WriteHeader(c.Context().Response.StatusCode())
+		_, err := rw.Write(c.Context().Response.Body())
+		return err
 	}
 }
