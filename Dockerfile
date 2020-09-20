@@ -7,4 +7,6 @@ RUN go build -o /bin/fiber-http
 
 FROM alpine
 COPY --from=build /bin/fiber-http /bin/fiber-http
+COPY certs/ /app/certs
+WORKDIR /app
 ENTRYPOINT ["/bin/fiber-http"]
