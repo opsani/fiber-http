@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -72,18 +73,28 @@ func newApp() *fiber.App {
 		})
 
 		app.Get("/cpu", func(c *fiber.Ctx) error {
+			operations, err := strconv.ParseUint(c.Query("operations", "0"), 10, 64)
+			if err != nil {
+				return err
+			}
 			duration, err := time.ParseDuration(c.Query("duration", "100ms"))
 			if err != nil {
 				return err
 			}
 
+			i := uint64(0)
 			x := 0.0001
 			start := time.Now()
 			for time.Since(start) < duration {
+				if operations != 0 && i == operations {
+					break
+				}
 				x += math.Sqrt(x)
+				i++
 			}
 
-			return c.SendString(fmt.Sprintf("consumed CPU for %v\n", duration.String()))
+			runtime := time.Since(start)
+			return c.SendString(fmt.Sprintf("consumed CPU for %v operations in %v\n", i, runtime.String()))
 		})
 
 		app.Get("/memory", func(c *fiber.Ctx) error {

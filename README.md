@@ -11,12 +11,15 @@ Built with [Fiber](https://docs.gofiber.io/) and
 * `/` - Returns a 200 (Ok) `text/plain` response of "move along, nothing to see
   here".
 * `/metrics` - Metrics in Prometheus format for scraping.
-* `/cpu{?duration}` - Consume CPU resources for the given duration (in Golang
-  Duration string format). Default: `100ms`
+* `/cpu{?operations,duration}` - Consume CPU resources for a given number of
+  operations (fixed work), a given duration (fixed time), or whichever comes
+  first. The `operations` query parameter is parsed as an unsigned integer
+  with zero interpretted as unlimited and the `duration` parameter is parsed as
+  a Golang Duration string. Default: `operations=0&duration=100ms`
 * `/memory{?size}` - Consume memory resources by allocating a byte array of the
-  given size (in human readable byte string format). Default: `10MB`
+  given size (in human readable byte string format). Default: `size=10MB`
 * `/time{?duration}` - Consume time by sleeping for the given duration (in
-  Golang Duration string format). Default: `100ms`
+  Golang Duration string format). Default: `duration=100ms`
 * `/request{?url}` - Proxy an HTTP GET request to a URL and return the status
   code & message body retrieved..
 

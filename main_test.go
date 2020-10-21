@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 )
 
@@ -47,7 +48,35 @@ func TestCPU(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("expected status code: 200, got: %v", resp.StatusCode)
 	}
-	assertResponseBodyEquals(t, resp, "consumed CPU for 100ms\n")
+	assertResponseBodyMatches(t, resp, `consumed CPU for \d+ operations in 100\.\d+ms\n`)
+}
+
+func TestCPUOperations(t *testing.T) {
+	app := newApp()
+	req := httptest.NewRequest("GET", "http://localhost:8080/cpu?operations=5000&duration=5m", nil)
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected status code: 200, got: %v", resp.StatusCode)
+	}
+	assertResponseBodyMatches(t, resp, `consumed CPU for 5000 operations in .*\n`)
+}
+
+func TestCPUOperationsDurationExpiresFirst(t *testing.T) {
+	app := newApp()
+	req := httptest.NewRequest("GET", "http://localhost:8080/cpu?operations=50000000&duration=100ms", nil)
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected status code: 200, got: %v", resp.StatusCode)
+	}
+	assertResponseBodyMatches(t, resp, `consumed CPU for \d+ operations in 100\.\d+ms\n`)
 }
 
 func TestMemory(t *testing.T) {
@@ -99,5 +128,17 @@ func assertResponseBodyEquals(t *testing.T, resp *http.Response, expected string
 	actual := string(body)
 	if actual != expected {
 		t.Errorf("expected %q but got %q", expected, actual)
+	}
+}
+
+func assertResponseBodyMatches(t *testing.T, resp *http.Response, expectedPattern string) {
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	actual := string(body)
+	matched, err := regexp.MatchString(expectedPattern, actual)
+	if !matched {
+		t.Errorf("expected %q to match %q but it did not: %v", actual, expectedPattern, err)
 	}
 }
