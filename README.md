@@ -54,6 +54,8 @@ By default, the server listens on HTTP port 8480 and HTTPS port 8843 (N + 8400).
 The port can be changed via the `HTTP_PORT` and `HTTPS_PORT` environment
 variables, respectively.
 
+### NOTE: Port numbers must be preceeded by a `:` e.g. `:8443`
+
 ## Initial memory allocation
 
 An initial resident memory allocation be created by setting the
